@@ -127,11 +127,17 @@ struct Client {
 	string Phone;
 	string AccountBalance;
 };
-string ReadBackClientDataRecord() {
+string ReadBackClientDataRecord(string AccountNumber="") {
 
 	Client c;
-	cout << "Enter Account Number: ";
-	getline(cin>>ws, c.AccountNumber);
+	if (AccountNumber == "") {
+		cout << "Enter Account Number: ";
+		getline(cin >> ws, c.AccountNumber);
+	}
+	else {
+		c.AccountNumber = AccountNumber;
+		cin.ignore();
+	}
 	cout << "Enter Pin Code: ";
 	getline(cin, c.PinCode);
 	cout << "Enter Name: ";
@@ -241,18 +247,29 @@ void FindClientByAccountName(string fileName, string AccountNumber) {
 
 void DeleteClientByAccountName(string fileName, string AccountNumber) {
 	vector<string>v;
+	Client c;
 	LoadDataFromFileToVector(fileName, v);
 	int index = -1;
 	for (int i = 0; i < v.size(); i++) {
-		Client c = fromLineToData(v[i], "#//#");
+		c = fromLineToData(v[i], "#//#");
 		if (c.AccountNumber == AccountNumber) {
 			index = i;
 			break;
 		}
 	}
 	if (index != -1) {
-		DeleteRecordFromFile(fileName, index);
-		cout << "Client Deleted" << endl;
+		PrintClient(c);
+		char x;
+		cout << "Are you sure you want to delete (y/n)" << endl;
+		cin >> x;
+		if (x == 'y') {
+			DeleteRecordFromFile(fileName, index);
+			cout << "Client Deleted" << endl;
+		}
+		else {
+			cout << "Client Not Deleted" << endl;
+		}
+
 	}
 	else {
 		cout << "Client Not Found" << endl;
@@ -271,7 +288,7 @@ void UpdateClientByAccountName(string fileName, string AccountNumber) {
 		}
 	}
 	if (index != -1) {
-		string s = ReadBackClientDataRecord();
+		string s = ReadBackClientDataRecord(AccountNumber);
 		UpdateRecordFromFile(fileName, index, s);
 		cout << "Client Updated" << endl;
 	}
@@ -280,11 +297,239 @@ void UpdateClientByAccountName(string fileName, string AccountNumber) {
 	}
 }
 
-void solve() {
+void ShowMenuScreen() {
+	cout << "1. Add New Client" << endl;
+	cout << "2. Show All Clients" << endl;
+	cout << "3. Find Client By Account Number" << endl;
+	cout << "4. Delete Client By Account Number" << endl;
+	cout << "5. Update Client By Account Number" << endl;
+	cout << "6.Transactions" << endl;
+	cout << "7. Exit" << endl;
 	
-	DeleteClientByAccountName("ClientData.txt", "A140");
+}
 
-	cout << "Hello World matchy matchy " << endl;
+void ShowTransactionMenu() {
+	cout << "1. Deposit" << endl;
+	cout << "2. Withdraw" << endl;
+	cout << "3. Show Total Balances" << endl;
+	cout << "4. Go Back to Main Menu" << endl;
+}
+void ShowTotalBalances() {
+		
+	//printing the balance of each client then the total balance
+
+	vector<string>v;
+	LoadDataFromFileToVector("ClientData.txt", v);
+	cout << "_____________________________________________________________________________________________________________________" << endl;
+	cout << setw(20) << "Account Number" << setw(20) << "Pin Code" << setw(20) << "Name" << setw(20) << "Phone" << setw(20) << "Account Balance" << endl;
+	cout << "_____________________________________________________________________________________________________________________" << endl;
+	for (string& i : v) {
+		Client c = fromLineToData(i, "#//#");
+		cout << setw(20) << c.AccountNumber << setw(20) << c.PinCode << setw(20) << c.Name << setw(20) << c.Phone << setw(20) << c.AccountBalance << endl;
+	}
+	//calculating the total balance
+	ll totalBalance = 0;
+	for (string& i : v) {
+		Client c = fromLineToData(i, "#//#");
+		totalBalance += stoll(c.AccountBalance);
+	}
+	cout << "_____________________________________________________________________________________________________________________" << endl;
+	cout << "Total Balance: " << totalBalance << endl;
+}
+
+void UpdateClientBalanceByAccountName(string fileName, string AccountNumber, long long balance) {
+	vector<string>v;
+	LoadDataFromFileToVector(fileName, v);
+	int index = -1;
+	for (int i = 0; i < v.size(); i++) {
+		Client c = fromLineToData(v[i], "#//#");
+		if (c.AccountNumber == AccountNumber) {
+			index = i;
+			break;
+		}
+	}
+	if (index != -1) {
+		Client c = fromLineToData(v[index], "#//#");
+		c.AccountBalance = to_string(balance);
+		string s = c.AccountNumber + "#//#" + c.PinCode + "#//#" + c.Name + "#//#" + c.Phone + "#//#" + c.AccountBalance;
+		UpdateRecordFromFile(fileName, index, s);
+		cout << "Client Updated" << endl;
+	}
+	else {
+		cout << "Client Not Found" << endl;
+	}
+}
+
+void WithDrawFromClient() {
+	string AccountNumber;
+	cout << "Enter Account Number: ";
+	cin >> AccountNumber;
+	vector<string>v;
+	LoadDataFromFileToVector("ClientData.txt", v);
+	int index = -1;
+	for (int i = 0; i < v.size(); i++) {
+		Client c = fromLineToData(v[i], "#//#");
+		if (c.AccountNumber == AccountNumber) {
+			index = i;
+			break;
+		}
+	}
+	if (index != -1) {
+		Client c = fromLineToData(v[index], "#//#");
+		cout << "Account Number: " << c.AccountNumber << endl;
+		cout << "Pin Code: " << c.PinCode << endl;
+		cout << "Name: " << c.Name << endl;
+		cout << "Phone: " << c.Phone << endl;
+		cout << "Account Balance: " << c.AccountBalance << endl;
+		ll amount;
+		cout << "Enter Amount to Withdraw: ";
+		cin >> amount;
+		if (amount > stoll(c.AccountBalance)) {
+			cout << "Insufficient Balance" << endl;
+			return;
+		}
+		c.AccountBalance = to_string(stoll(c.AccountBalance) - amount);
+		UpdateClientBalanceByAccountName("ClientData.txt", c.AccountNumber, stoll(c.AccountBalance));
+
+	}
+	else {
+		cout << "Client Not Found" << endl;
+	}
+
+}
+
+enum TransactionType {
+	Deposit = 1,
+	Withdraw = 2,
+	TotalBalance=3,
+	MainMenu = 4
+};
+
+
+void DipositFromClient() {
+	string AccountNumber;
+	cout << "Enter Account Number: ";
+	cin >> AccountNumber;
+	vector<string>v;
+	LoadDataFromFileToVector("ClientData.txt", v);
+	int index = -1;
+	for (int i = 0; i < v.size(); i++) {
+		Client c = fromLineToData(v[i], "#//#");
+		if (c.AccountNumber == AccountNumber) {
+			index = i;
+			break;
+		}
+	}
+	if (index != -1) {
+		Client c = fromLineToData(v[index], "#//#");
+		cout << "Account Number: " << c.AccountNumber << endl;
+		cout << "Pin Code: " << c.PinCode << endl;
+		cout << "Name: " << c.Name << endl;
+		cout << "Phone: " << c.Phone << endl;
+		cout << "Account Balance: " << c.AccountBalance << endl;
+		ll amount;
+		cout << "Enter Amount to Deposit: ";
+		cin >> amount;
+		c.AccountBalance = to_string(stoll(c.AccountBalance) + amount);
+		UpdateClientBalanceByAccountName("ClientData.txt", c.AccountNumber, stoll(c.AccountBalance));
+		cout << "New Balance: " << c.AccountBalance << endl;
+	}
+	else {
+		cout << "Client Not Found" << endl;
+	}
+}
+
+void solve() {
+	while (1) {
+		ShowMenuScreen();
+		int choice;
+		cout << "Enter Your Choice: ";
+		cin >> choice;
+		cin.ignore();
+		system("cls");
+		if (choice == 1) {
+			char x = 'y';
+			while(x=='y' || x=='Y') {
+				system("cls");
+				Client c = addNewClient();
+				cout << "Do you want to add more clients? (y/n): ";
+				//cin.ignore();
+				cin >> x;
+			
+			}
+			cout << "Clients Added Successfully" << endl;
+			system("pause");
+		}
+		else if (choice == 2) {
+			ShowAllClientFromFileInaFancyWay("ClientData.txt");
+			system("pause");
+		}
+		else if (choice == 3) {
+			string AccountNumber;
+			cout << "Enter Account Number: ";
+			cin >> AccountNumber;
+			FindClientByAccountName("ClientData.txt", AccountNumber);
+			system("pause");
+		}
+		else if (choice == 4) {
+			string AccountNumber;
+			cout << "Enter Account Number: ";
+			cin >> AccountNumber;
+			DeleteClientByAccountName("ClientData.txt", AccountNumber);
+			system("pause");
+		}
+		else if (choice == 5) {
+			string AccountNumber;
+			cout << "Enter Account Number: ";
+			cin >> AccountNumber;
+			UpdateClientByAccountName("ClientData.txt", AccountNumber);
+			system("pause");
+		}
+		else if (choice == 6) {
+			while (1) {
+				system("cls");
+				ShowTransactionMenu();
+				int choice;
+				cout << "Enter Your Choice: ";
+				cin >> choice;
+				cin.ignore();
+				system("cls");
+				if (choice == 1) {
+					// Deposit
+					cout << "Deposit" << endl;
+					DipositFromClient();
+					system("pause");
+				}
+				else if (choice == 2) {
+					// Withdraw
+					cout << "Withdraw" << endl;
+					WithDrawFromClient();
+					system("pause");
+				}
+				else if (choice == 3) {
+					// Show Total Balances
+					cout << "Show Total Balances" << endl;
+					ShowTotalBalances();
+					system("pause");
+				}
+				else if (choice == 4) {
+					break;
+				}
+				else {
+					cout << "Invalid Choice" << endl;
+				}
+			}
+		
+		}
+		else if (choice == 7) {
+			break;
+		}
+		else {
+			cout << "Invalid Choice" << endl;
+		}
+		system("cls");
+	}
+	
 }
 
 int main() {
